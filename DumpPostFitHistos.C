@@ -19,6 +19,12 @@
    root [0] .L DumpPostFitHistos.C+
    root [1] DumpPostFitHistos("workspaces/taumu_lh_ll/ws_LFV_combined_AllSYS_model.root", "", "taumu_lh_ll.root", "", true, true, false, false)
 
+   Alternatively, as standalone:
+   compile with
+   g++ -Wall `root-config  --cflags` -o DumpPostFitHistos DumpPostFitHistos.C `root-config --libs` -lRooFitCore -lRooFit -lRooStats -lHistFactory
+   run with
+   ./DumpPostFitHistos -h
+
    original version:
    ruthmann@cern.ch for the htautau group, 2013
    hlfv version:
@@ -51,6 +57,7 @@
 #include "TTree.h"
 #include "TLeaf.h"
 #include "TMarker.h"
+#include "TInterpreter.h"
 
 // RooFit
 #include "RooWorkspace.h"
@@ -84,6 +91,7 @@
 #include "RooStats/SamplingDistPlot.h"
 #include "RooStats/ToyMCSampler.h"
 #include "RooStats/RooStatsUtils.h"
+#include "RooStats/HistFactory/PiecewiseInterpolation.h"
 //#include "RooStats/MinNLLTestStat.h"
 
 
@@ -122,8 +130,16 @@ void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFil
       snapshotName:  snpshot which will be tried to load
       doFit: in all cases do a fit
     */
-
-
+    cout<<"DumpPostFitHistos() running options:"<<endl
+        <<" workspaceIn "<<workspaceIn
+        <<" workspaceVar "<<workspaceVar
+        <<" outFile "<<outFile
+        <<" snapshotName "<<snapshotName
+        <<" doFit "<<doFit
+        <<" transportCovariance "<<transportCovariance
+        <<" JustFit "<<JustFit
+        <<" convertaxis "<<convertaxis
+        <<endl;
     // Load workspaceIn
     TFile*file_wsIn = TFile::Open(workspaceIn);
     if (!file_wsIn) {
@@ -1013,4 +1029,37 @@ TH1* ConvertBDTAxis(TH1 *hist){
         newh->SetBinError(b, hist->GetBinError(b));
     }
     return newh;
+}
+//----------------------------------------------------------
+int main(int argc, char** argv) {
+    string inputWorkspace;
+    string workspaceVariable; //only used if you want to apply the fit results to another distribution
+    string outputFile;
+    // keep the same defaults as function def (might need to update)
+    bool doFit = true;
+    bool transportCovariance = false;
+    bool justFit = false;
+    bool convertAxis = false;
+
+    int optind(1);
+    while ((optind < argc)) {
+        std::string sw = argv[optind];
+        if(sw[0]!='-') { /*if(dbg)*/ cout<<"skip "<<sw<<endl; optind++; continue; }
+        if     (sw=="-i"||sw=="--input") { inputWorkspace = argv[++optind]; }
+        else if(sw=="-V"||sw=="--variable" ) { workspaceVariable = argv[++optind]; }
+        else if(sw=="-o"||sw=="--output") { outputFile = argv[++optind]; }
+        else if(sw=="--skip-fit") { doFit = false; }
+        else if(sw=="--transport-cov") { transportCovariance = true; }
+        else if(sw=="--just-fit") { justFit = true; }
+        else if(sw=="--convert-axis") { convertAxis = true; }
+        // \todo else if(sw=="-h"||sw=="--help" ) { usage(argv[0], matrixFile.c_str()); return 0; }
+        else cout<<"Unknown switch "<<sw<<endl;
+        optind++;
+    } // end while(optind<argc)
+
+    string snapshotname = "";
+    DumpPostFitHistos(inputWorkspace.c_str(), workspaceVariable.c_str(), outputFile.c_str(), snapshotname,
+                      doFit, transportCovariance, justFit, convertAxis);
+                      // true, true, false, false);
+    return 0;
 }
