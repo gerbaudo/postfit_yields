@@ -1,4 +1,30 @@
 // emacs -*- C++ -*-
+
+/**
+   Script to save the post-fit histograms and yields.
+
+   This are the main steps in the script:
+   0. read in workspace
+   1. perform a standard fit and save a snapshot
+   2. for category in [SR, CR, ...]:
+        for component in [background components]:
+           compute integral and error varying only these component
+           collect components that should be reported together (eg. multiple signal production processes)
+        3. compute integral and error for merged components
+        4. perform two global fits: one with muhat, and one with mu=0
+
+
+   How to run:
+   root -l -b
+   root [0] .L DumpPostFitHistos.C+
+   root [1] DumpPostFitHistos("workspaces/taumu_lh_ll/ws_LFV_combined_AllSYS_model.root", "", "taumu_lh_ll.root", "", true, true, false, false)
+
+   original version:
+   ruthmann@cern.ch for the htautau group, 2013
+   hlfv version:
+   davide.gerbaudo@gmail.com,  Dec 2015
+*/
+
 // C++
 #include <iostream>
 #include <fstream>
@@ -351,11 +377,22 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
             compname.ReplaceAll("_overallSyst_x_Exp","");
 
             // This here is ugly and hacky.. depends on the naming. I twill work though for Swagatos combination in November 2013
-            if( ( compname.Contains("WH") ||  compname.Contains("ZH") ||  compname.Contains("ggH") ||  compname.Contains("VBF")) && !  compname.Contains("HWW") ){
+            struct {
+                bool operator()(const TString &n) {
+                    return ((n.Contains("WH") || n.Contains("ZH") || n.Contains("ggH") || n.Contains("VBF"))
+                            and not n.Contains("HWW"));
+                }
+            } isSignalHtautau;
+            struct {
+                bool operator()(const TString &n) {
+                    return (n.Contains("signal") and (n.Contains("ggH") || n.Contains("vbf") || n.Contains("VH")));
+                }
+            } isSignalHlfv;
+
+            if(isSignalHlfv(compname)) {
                 signalComps.add(*comp);
                 nsig+= (comp->createIntegral(*obs))->getVal() * binWidth->getVal() ;
-            }
-            else{
+            } else {
                 bkdComps.add(*comp);
             }
             if ( compname.Contains("Ztt") ){
@@ -436,27 +473,15 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
                 tmph.SetBinError(1,err_correct);
                 tmph.Write();
             }
-
-            // RooRealVar* bkdswitch=   (RooRealVar*) params->find("BKDSwitch");
-            // bkdswitch->setVal(0);
-            // pdftmp->plotOn(frame,FillColor(kOrange),LineWidth(2),LineColor(kBlue),VisualizeError(*fitresGlobal,1),
-            // 		     Normalization(1,RooAbsReal::RelativeExpected) ,Name("FitError_AfterFit_FullSignal"));
-            // bkdswitch->setVal(1);
-
         }
-
-
         // //The combined model
         if(fitresGlobal){
             pdftmp->plotOn(frame,FillColor(kOrange),LineWidth(2),LineColor(kBlue),VisualizeError(*fitresGlobal,1),
                            Normalization(1,RooAbsReal::RelativeExpected) ,Name("FitError_AfterFit"));
-
-
-
             RooAbsReal*  integral= pdfmodel->createIntegral(*obs);
             //      double  nom= integral->getVal() * binWidth_model->getVal();
-            double  nom= integral->getVal() ;
             //      double  err_correct = integral->getPropagatedError(*fitresGlobal )* binWidth->getVal();
+            double  nom= integral->getVal() ;
             double  err_correct = integral->getPropagatedError(*fitresGlobal );
             myfile<<"Total Model muhat (with stat NP) = "<<nom <<" +- "<<err_correct<<endl;
             TH1F tmph=TH1F(TString("Integral_TotModelMuHat")+tag,TString("Integral_TotModelMuHat")+tag, 1,0,1);
@@ -467,7 +492,6 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
             // Now also get the error for bkd only
             if (poi)
                 poi->setVal(0.);
-
             integral= pdfmodel->createIntegral(*obs);
             // nom= integral->getVal() * binWidth->getVal();
             // err_correct = integral->getPropagatedError(*fitresGlobal )* binWidth->getVal();
@@ -494,7 +518,6 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
             h_data= ConvertBDTAxis(h_data);
 
         myfile<<"Data = "<<h_data->Integral() <<endl;
-
         myfile.close();
 
         // Now prefit:
@@ -551,8 +574,7 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
         }
         file->Close();
 
-
-    }
+    } // end while(tt) (loop on categories)
     return;
 }
 
