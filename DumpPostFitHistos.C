@@ -58,6 +58,7 @@
 #include "TLeaf.h"
 #include "TMarker.h"
 #include "TInterpreter.h"
+#include "TTimeStamp.h"
 
 // RooFit
 #include "RooWorkspace.h"
@@ -130,15 +131,16 @@ void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFil
       snapshotName:  snpshot which will be tried to load
       doFit: in all cases do a fit
     */
-    cout<<"DumpPostFitHistos() running options:"<<endl
-        <<" workspaceIn "<<workspaceIn
-        <<" workspaceVar "<<workspaceVar
-        <<" outFile "<<outFile
-        <<" snapshotName "<<snapshotName
-        <<" doFit "<<doFit
-        <<" transportCovariance "<<transportCovariance
-        <<" JustFit "<<JustFit
-        <<" convertaxis "<<convertaxis
+    cout<<"DumpPostFitHistos() starting at "<<TTimeStamp().AsString()<<endl
+        <<" running options:"<<endl
+        <<" workspaceIn '"<<workspaceIn<<"'"
+        <<" workspaceVar '"<<workspaceVar<<"'"
+        <<" outFile '"<<outFile<<"'"
+        <<" snapshotName '"<<snapshotName<<"'"
+        <<" doFit '"<<doFit<<"'"
+        <<" transportCovariance '"<<transportCovariance<<"'"
+        <<" JustFit '"<<JustFit<<"'"
+        <<" convertaxis '"<<convertaxis<<"'"
         <<endl;
     // Load workspaceIn
     TFile*file_wsIn = TFile::Open(workspaceIn);
@@ -591,6 +593,7 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
         file->Close();
 
     } // end while(tt) (loop on categories)
+    cout<<"DumpPostFitHistos() finishing at "<<TTimeStamp().AsString()<<endl;
     return;
 }
 
