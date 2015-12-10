@@ -261,10 +261,17 @@ void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFil
     }
 
     if(workspaceVar==""){
+        cout<<"---------------------------------------"<<endl
+            <<"Done with the preliminary fits; now going to dump the histograms"<<endl
+            <<"  first DumpHistograms for the unconstrained fit..."<<endl
+            <<"---------------------------------------"<<endl;
         wIn->saveSnapshot("THESnapShot",*paramsIn);
         params=paramsIn;
         DumpHistograms(wIn, mcIn, pdfIn, dataIn, outFile, r ,"", convertaxis);
         // Crazy idea: do another fit:
+        cout<<"---------------------------------------"<<endl
+            <<"  then DumpHistograms for the mu=0 fit..."<<endl
+            <<"---------------------------------------"<<endl;
         RooRealVar * poi = (RooRealVar*) mcIn->GetParametersOfInterest()->first();
         poi->setVal(0);
         poi->setConstant(true);
@@ -275,6 +282,16 @@ void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFil
                       "Minuit2", false);
         if (!  wIn->saveSnapshot("THESnapShot",*paramsIn)){cout<<"Failed to overwrite the snapshot"<<endl;}
         DumpHistograms(wIn, mcIn, pdfIn, dataIn, outFile, r, "_condMu0" , convertaxis);
+        // one more fit, now with mu=1 (to get the exp signal)
+        wIn->loadSnapshot("THESnapShot"); // needed?
+        poi->setConstant(false);
+        poi->setVal(1);
+        poi->setConstant(true);
+        r =  FitPDF(  mcIn,  pdfIn, dataIn,
+                      MinuitStat, HessStat, Edm,
+                      "Minuit2", false);
+        if (!  wIn->saveSnapshot("THESnapShot",*paramsIn)){cout<<"Failed to overwrite the snapshot"<<endl;}
+        DumpHistograms(wIn, mcIn, pdfIn, dataIn, outFile, r, "_condMu1" , convertaxis);
 
 
         return;
@@ -297,12 +314,15 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
     cout<<endl;
     cout<<endl;
     cout<<" DumpHistograms........."<<endl;
+    string linebreak="--------------------------------------------------\n";
     RooCategory* channelCat = (RooCategory*) (&pdfVar->indexCat());
     TIterator *iter = channelCat->typeIterator() ;
     RooCatType *tt  = NULL;
 
     const RooArgSet* nuis=  mc->GetNuisanceParameters();
+    int channelCounter = -1;
     while((tt=(RooCatType*) iter->Next()) ){
+        channelCounter++;
         TString tmpFileName= outFile;
         tmpFileName.ReplaceAll(".root",TString(tt->GetName())+".root");
         TFile* file=0;
@@ -314,7 +334,7 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
         TString modelName(tt->GetName());
         modelName.Append("_model");
 
-        cout<<"   On Category:"<<modelName<<endl;
+        cout<<"\n\n"<<linebreak+linebreak<<"   On Category["<<channelCounter<<"]: "<<modelName<<"\n\n"<<linebreak+linebreak<<endl;
         if( modelName.Contains("btop") || modelName.Contains("vtop") || modelName.Contains("vzll") || modelName.Contains("bzll") ){
             cout<<" ... skip"<<endl;
             continue;
@@ -383,10 +403,11 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
 
         float nsig=0;
 
-
+        int categoryCounter = -1;
         while( (comp = (RooProduct*) funcIter.Next()) ) {
+            categoryCounter++;
             TString compname(comp->GetName());
-            cout<<"On category:"<<compname<<endl;
+            cout<<"\n"<<linebreak<<"On category["<<categoryCounter<<"]: "<<compname<<"\n"<<linebreak<<endl;
 
             compname.ReplaceAll("L_x_","");
             compname.ReplaceAll(tt->GetName(),"");
@@ -413,9 +434,7 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
             } else {
                 bkdComps.add(*comp);
             }
-            if ( compname.Contains("Ztt") ){
-                zttComps.add(*comp);
-            }
+            if ( compname.Contains("Ztt") ) { zttComps.add(*comp); }
 
             RooAbsReal* integral = comp->createIntegral(*obs);
             double nom= integral->getVal() * binWidth->getVal();
