@@ -115,14 +115,14 @@ TString modelConfigName = "ModelConfig";
 TString ObsDataName = "obsData";//"asimov125_1";
 RooArgSet* params=0;
 
-void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFile, TString snapshotName="", bool doFit=true,bool transportCovariance=false, bool JustFit=false, bool convertaxis=false  );
+void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFile, TString snapshotName="", bool doFit=true,bool transportCovariance=false, bool JustFit=false, bool convertaxis=false, bool fixNuisanceParameters=false  );
 TH1* ConvertBDTAxis(TH1 *hist);
 
 //======================================================
 // ================= Main function =====================
 //======================================================
 
-void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFile, TString snapshotName, bool doFit, bool transportCovariance, bool JustFit, bool convertaxis ){
+void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFile, TString snapshotName, bool doFit, bool transportCovariance, bool JustFit, bool convertaxis, bool fixNuisanceParameters ){
     /*
       workspaceIn: Workspace to load
       workspaceVar: This is the workspace where the NPs should be transferred to
@@ -258,6 +258,38 @@ void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFil
         myfile<<"muval="<<poi->getVal()<<" + "<<poi->getErrorHi()<<" - "<<poi->getErrorLo()<<endl;
         myfile.close();
         if(JustFit) return;
+    }
+
+    if(fixNuisanceParameters) {
+        cout<<"---------------------------------------"<<endl
+            <<"Fixing the systematic nuisance parameters and then running another fit"<<endl
+            <<"---------------------------------------"<<endl;
+        struct {
+            bool operator()(const TString &n) {
+                return (n.BeginsWith("alpha_ATLAS") or n.BeginsWith("alpha_Fakes") or
+                        n.BeginsWith("alpha_QCDscale") or n.BeginsWith("alpha_pdf") or
+                        n.BeginsWith("fl1pt_l1pt") or n.BeginsWith("gamma_B0_l1pt"));
+            }
+        } isNuisanceParameter;
+        TIterator* it = paramsIn->createIterator();
+        while (RooRealVar *v = static_cast<RooRealVar*>(it->Next())){
+            if(isNuisanceParameter(v->GetName())) {
+                v->setConstant(true);
+            cout<<"Fixing nuisance parameter '"<<v->GetName()<<"' to constant"<<endl;
+            }
+        }
+        int MinuitStat,HessStat;
+        double Edm;
+        r =  FitPDF(  mcIn,  pdfIn, dataIn,
+                      MinuitStat, HessStat, Edm,
+                      "Minuit2", false);
+        wIn->saveSnapshot(snapshotName, *paramsIn);
+        if( MinuitStat !=0 && MinuitStat !=1) cout<<" ERROR: Fit Failed"<<endl;
+
+        cout<<"---------------------------------------"<<endl
+            <<"Fit result:"<<endl;
+        r->Print();
+        cout<<"---------------------------------------"<<endl;
     }
 
     if(workspaceVar==""){
@@ -1062,6 +1094,7 @@ int main(int argc, char** argv) {
     bool transportCovariance = false;
     bool justFit = false;
     bool convertAxis = false;
+    bool fixSystematicParameters = false;
 
     int optind(1);
     while ((optind < argc)) {
@@ -1074,6 +1107,7 @@ int main(int argc, char** argv) {
         else if(sw=="--transport-cov") { transportCovariance = true; }
         else if(sw=="--just-fit") { justFit = true; }
         else if(sw=="--convert-axis") { convertAxis = true; }
+        else if(sw=="--constant-syst") { fixSystematicParameters = true; }
         // \todo else if(sw=="-h"||sw=="--help" ) { usage(argv[0], matrixFile.c_str()); return 0; }
         else cout<<"Unknown switch "<<sw<<endl;
         optind++;
@@ -1081,7 +1115,7 @@ int main(int argc, char** argv) {
 
     string snapshotname = "";
     DumpPostFitHistos(inputWorkspace.c_str(), workspaceVariable.c_str(), outputFile.c_str(), snapshotname,
-                      doFit, transportCovariance, justFit, convertAxis);
+                      doFit, transportCovariance, justFit, convertAxis, fixSystematicParameters);
                       // true, true, false, false);
     return 0;
 }

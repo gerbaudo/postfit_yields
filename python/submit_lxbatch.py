@@ -35,6 +35,7 @@ parser.add_option('-o', '--output-dir')
 parser.add_option('-q', '--queue', default='8nm', help='see bqueues')
 parser.add_option('-l', '--label', help='only used in jobname')
 parser.add_option("-s", "--sample", help="sample name")
+parser.add_option("--stat-only", action="store_true", default=False, help="fix syst NP, float stat only")
 parser.add_option("-S", "--submit", action="store_true", default=False, help="Actually submit the jobs")
 
 (options, args) = parser.parse_args()
@@ -59,6 +60,7 @@ output_dir = options.output_dir
 queue = options.queue
 sample = options.sample
 submit = options.submit
+otherOption = '--constant-syst' if options.stat_only else ''
 for jobId, input_file in zip(jobIds, input_files):
     jobname = (sample+'_'+jobId) if sample else jobId
     jobname += (options.label if options.label else '')
@@ -69,7 +71,8 @@ for jobId, input_file in zip(jobIds, input_files):
                +" %s"%batchScript
                +" %s"%input_file
                +" %s"%output_file
-               +" %s"%jobId)
+               +" %s"%jobId
+               +" %s"%otherOption)
                
     print bsubCmd
     if submit :

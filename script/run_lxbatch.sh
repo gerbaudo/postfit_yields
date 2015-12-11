@@ -12,6 +12,10 @@
 INPUT_FILE=$1
 OUTPUT_FILE=$2
 JOBID=$3
+# # for /f "tokens=3,* delims= " %%a in ("%*") do set ALL_BUT_FIRST_THREE=%%b
+# for /f "usebackq tokens=3*" %%i in (`echo %*`) DO @ set ALL_BUT_FIRST_THREE=%%j
+# OTHER_OPTIONS=%ALL_BUT_FIRST_THREE%
+OTHER_OPTION=$4
 
 # set -e # exit on error
 # set -u # exit on undefined variable
@@ -20,6 +24,7 @@ echo "Using these options:"
 echo "INPUT_FILE       $INPUT_FILE     "
 echo "OUTPUT_FILE      $OUTPUT_FILE    "
 echo "JOBID            $JOBID          "
+echo "OTHER_OPTION     $OTHER_OPTION   "
 
 
 BASE_DIR='/afs/cern.ch/user/g/gerbaudo/work/public/hlfv/hlfv_fit_tests/print_postfit_yields'
@@ -46,7 +51,7 @@ mkdir -p ${IN_LOCAL_DIR}
 cp -p ${BASE_DIR}/${INPUT_FILE} ${IN_LOCAL_DIR}/
 mkdir -p ${OUT_LOCAL_DIR}
 
-${BASE_DIR}/DumpPostFitHistos -i ${INPUT_FILE} -o ${OUTPUT_FILE} --transport-cov 2>&1 | tee ${OUTPUT_FILE/root/log}
+${BASE_DIR}/DumpPostFitHistos -i ${INPUT_FILE} -o ${OUTPUT_FILE} --transport-cov ${OTHER_OPTION} 2>&1 | tee ${OUTPUT_FILE/root/log}
 
 
 echo "Done `date`"
