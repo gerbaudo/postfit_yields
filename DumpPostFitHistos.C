@@ -268,7 +268,7 @@ void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFil
             bool operator()(const TString &n) {
                 return (n.BeginsWith("alpha_ATLAS") or n.BeginsWith("alpha_Fakes") or
                         n.BeginsWith("alpha_QCDscale") or n.BeginsWith("alpha_pdf") or
-                        n.BeginsWith("fl1pt_l1pt") or n.BeginsWith("gamma_B0_l1pt"));
+                        n.BeginsWith("fl1pt_l1pt"));
             }
         } isNuisanceParameter;
         TIterator* it = paramsIn->createIterator();
@@ -290,6 +290,7 @@ void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFil
             <<"Fit result:"<<endl;
         r->Print();
         cout<<"---------------------------------------"<<endl;
+        DumpHistograms(wIn, mcIn, pdfIn, dataIn, outFile, r, "_noSyst" , convertaxis);
     }
 
     if(workspaceVar==""){
