@@ -260,24 +260,28 @@ void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFil
         if(JustFit) return;
     }
 
+    struct IsNuisanceParameter{
+        bool operator()(const TString &n) {
+            return (n.BeginsWith("alpha_ATLAS") or n.BeginsWith("alpha_Fakes") or
+                    n.BeginsWith("alpha_QCDscale") or n.BeginsWith("alpha_pdf") or
+                    n.BeginsWith("fl1pt_l1pt"));
+        }
+    };
+    struct {
+        void operator()(TIterator* it) {
+            while (RooRealVar *v = static_cast<RooRealVar*>(it->Next())){
+                if(IsNuisanceParameter()(v->GetName())) {
+                    v->setConstant(true);
+                    cout<<"Fixing nuisance parameter '"<<v->GetName()<<"' to constant"<<endl;
+                }
+            }
+        }
+    } fixSystNuisanceParameters;
     if(fixNuisanceParameters) {
         cout<<"---------------------------------------"<<endl
             <<"Fixing the systematic nuisance parameters and then running another fit"<<endl
             <<"---------------------------------------"<<endl;
-        struct {
-            bool operator()(const TString &n) {
-                return (n.BeginsWith("alpha_ATLAS") or n.BeginsWith("alpha_Fakes") or
-                        n.BeginsWith("alpha_QCDscale") or n.BeginsWith("alpha_pdf") or
-                        n.BeginsWith("fl1pt_l1pt"));
-            }
-        } isNuisanceParameter;
-        TIterator* it = paramsIn->createIterator();
-        while (RooRealVar *v = static_cast<RooRealVar*>(it->Next())){
-            if(isNuisanceParameter(v->GetName())) {
-                v->setConstant(true);
-            cout<<"Fixing nuisance parameter '"<<v->GetName()<<"' to constant"<<endl;
-            }
-        }
+        fixSystNuisanceParameters(paramsIn->createIterator());
         int MinuitStat,HessStat;
         double Edm;
         r =  FitPDF(  mcIn,  pdfIn, dataIn,
@@ -308,6 +312,7 @@ void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFil
         RooRealVar * poi = (RooRealVar*) mcIn->GetParametersOfInterest()->first();
         poi->setVal(0);
         poi->setConstant(true);
+        if(fixNuisanceParameters) fixSystNuisanceParameters(paramsIn->createIterator());
         int MinuitStat,HessStat;
         double Edm;
         r =  FitPDF(  mcIn,  pdfIn, dataIn,
@@ -320,6 +325,7 @@ void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFil
         poi->setConstant(false);
         poi->setVal(1);
         poi->setConstant(true);
+        if(fixNuisanceParameters) fixSystNuisanceParameters(paramsIn->createIterator());
         r =  FitPDF(  mcIn,  pdfIn, dataIn,
                       MinuitStat, HessStat, Edm,
                       "Minuit2", false);
