@@ -117,6 +117,7 @@ RooArgSet* params=0;
 
 void DumpPostFitHistos(TString workspaceIn, TString workspaceVar, TString outFile, TString snapshotName="", bool doFit=true,bool transportCovariance=false, bool JustFit=false, bool convertaxis=false, bool fixNuisanceParameters=false  );
 TH1* ConvertBDTAxis(TH1 *hist);
+string fptFitValuesAsString(const RooFitResult *fitResult);
 
 //======================================================
 // ================= Main function =====================
@@ -374,7 +375,8 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
         modelName.Append("_model");
 
         cout<<"\n\n"<<linebreak+linebreak<<"   On Category["<<channelCounter<<"]: "<<modelName<<"\n\n"<<linebreak+linebreak<<endl;
-        if( modelName.Contains("btop") || modelName.Contains("vtop") || modelName.Contains("vzll") || modelName.Contains("bzll") ){
+        if(modelName.Contains("btop") || modelName.Contains("vtop") ||
+           modelName.Contains("vzll") || modelName.Contains("bzll") ){
             cout<<" ... skip"<<endl;
             continue;
         }
@@ -455,12 +457,12 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
             compname.ReplaceAll("_overallSyst_x_Exp","");
 
             // This here is ugly and hacky.. depends on the naming. I twill work though for Swagatos combination in November 2013
-            struct {
+            struct IsSignalHtautau {
                 bool operator()(const TString &n) {
                     return ((n.Contains("WH") || n.Contains("ZH") || n.Contains("ggH") || n.Contains("VBF"))
                             and not n.Contains("HWW"));
                 }
-            } isSignalHtautau;
+            };
             struct {
                 bool operator()(const TString &n) {
                     return (n.Contains("signal") and (n.Contains("ggH") || n.Contains("vbf") || n.Contains("VH")));
@@ -477,7 +479,7 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
 
             RooAbsReal* integral = comp->createIntegral(*obs);
             double nom= integral->getVal() * binWidth->getVal();
-            double 	err_correct=0;
+            double err_correct=0;
             //      cout << "\t" << comp->GetName() << "\t" << (comp->createIntegral(*obs))->getVal() * binWidth->getVal() << endl;
 
             // Get the correct event yield:
@@ -594,6 +596,8 @@ void DumpHistograms(RooWorkspace* w,ModelConfig*mc,  RooSimultaneous* pdfVar, Ro
             h_data= ConvertBDTAxis(h_data);
 
         myfile<<"Data = "<<h_data->Integral() <<endl;
+        myfile<<fptFitValuesAsString(fitresGlobal)<<endl;
+
         myfile.close();
 
         // Now prefit:
@@ -1090,6 +1094,20 @@ TH1* ConvertBDTAxis(TH1 *hist){
         newh->SetBinError(b, hist->GetBinError(b));
     }
     return newh;
+}
+//----------------------------------------------------------
+string fptFitValuesAsString(const RooFitResult *fitResult)
+{
+    std::ostringstream oss;
+    if(TIterator* parIter = fitResult->floatParsFinal().createIterator()) {
+        while(RooRealVar *var = static_cast<RooRealVar*>(parIter->Next())){
+            TString name =  var->GetName();
+            if(name.BeginsWith("fl1pt_l1pt")){
+                oss<<name<<" = "<<var->getVal()<<" +- "<<var->getError()<<")\n";
+            }
+        }
+    }
+    return oss.str();
 }
 //----------------------------------------------------------
 int main(int argc, char** argv) {
