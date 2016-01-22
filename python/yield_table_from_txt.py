@@ -165,19 +165,23 @@ def main():
                    for r in regions for l in l1ptbins for c in channels]
 
     bkg_tot = [Yield(sample='bkg', region=r, l1ptbin=l, channel=c,
-                     value_toterr=get_yield_err(filenameMu0(floatall_dir+'/'+'taue', c, l, r),
+                     value_toterr=get_yield_err(filenameMuhat(floatall_dir+'/'+'taue', c, l, r),
+                     # value_toterr=get_yield_err(filenameMu0(floatall_dir+'/'+'taue', c, l, r),
                                                 bkg_token))
                for r in regions for l in l1ptbins for c in channels]
     bkg_stat = [Yield(sample='bkg', region=r, l1ptbin=l, channel=c,
-                      value_staterr=get_yield_err(filenameMu0(floatstat_dir+'/'+'taue', c, l, r),
+                      value_staterr=get_yield_err(filenameMuhat(floatstat_dir+'/'+'taue', c, l, r),
+                      # value_staterr=get_yield_err(filenameMu0(floatstat_dir+'/'+'taue', c, l, r),
                                                   bkg_token))
                 for r in regions for l in l1ptbins for c in channels]
     fake_tot = [Yield(sample='fake', region=r, l1ptbin=l, channel=c,
-                      value_toterr=get_yield_err(filenameMu0(floatall_dir+'/'+'taue', c, l, r),
+                      value_toterr=get_yield_err(filenameMuhat(floatall_dir+'/'+'taue', c, l, r),
+                      # value_toterr=get_yield_err(filenameMu0(floatall_dir+'/'+'taue', c, l, r),
                                                  fake_token))
                 for r in regions for l in l1ptbins for c in channels]
     fake_stat = [Yield(sample='fake', region=r, l1ptbin=l, channel=c,
-                       value_staterr=get_yield_err(filenameMu0(floatstat_dir+'/'+'taue', c, l, r),
+                       value_staterr=get_yield_err(filenameMuhat(floatstat_dir+'/'+'taue', c, l, r),
+                       # value_staterr=get_yield_err(filenameMu0(floatstat_dir+'/'+'taue', c, l, r),
                                                    fake_token))
                  for r in regions for l in l1ptbins for c in channels]
     sig_tot = [Yield(sample='sig', region=r, l1ptbin=l, channel=c,
